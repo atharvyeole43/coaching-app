@@ -1,93 +1,279 @@
-# export crm backend
+# Coaching App — Daily Income Chart API
 
+A backend REST API built with **Go (Gin)** for the Daily Income Chart feature in a coaching application. It compares the last 7 days of income versus the previous 7 days for a specific coach.
 
+---
 
-## Getting started
+## Tech Stack
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- **Language:** Go
+- **Framework:** Gin
+- **Database:** MySQL
+- **ORM:** GORM
+- **Logger:** Logrus
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+## Project Structure
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+coaching-app/
+├── app/
+│   └── app.go
+├── cmd/
+│   └── app/
+│       └── run.go
+├── config/
+│   ├── config.go
+│   └── db.go
+├── constant/
+├── dto/
+│   └── income_dto.go
+├── internal/
+│   ├── apperrors/
+│   │   └── apperrors.go
+│   ├── controller/
+│   │   └── inc/
+│   │       ├── income_controller.go
+│   │       └── init_income_controller.go
+│   ├── middleware/
+│   │   ├── auth_middleware.go
+│   │   ├── rate_limiter.go
+│   │   └── timeout_middleware.go
+│   ├── repository/
+│   │   └── inc/
+│   │       ├── income_repository.go
+│   │       └── init_income_repository.go
+│   ├── routes/
+│   │   └── routes.go
+│   └── service/
+│       └── inc/
+│           ├── income_service.go
+│           └── init_income_service.go
+├── models/
+│   ├── coach.go
+│   └── income_transactions.go
+├── pkg/
+│   └── logger/
+│       └── logger.go
+├── response/
+│   └── response.go
+├── storage/
+│   └── db/
+│       └── client.go
+├── utils/
+│   ├── env_utils.go
+│   ├── errors.go
+│   ├── mysql_error_map.go
+│   ├── response_utils.go
+│   └── validator_utils.go
+├── .env.example
+├── go.mod
+├── go.sum
+└── main.go
+---
 
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/atharvyeole43/coaching-app.git
+cd coaching-app
 ```
-cd existing_repo
-git remote add origin http://gitlab.choicetechlab.com/choice-techlab-expo-backend/export-crm-backend.git
-git branch -M main
-git push -uf origin main
+
+### 2. Setup environment variables
+
+
+APP_ENV="LOCAL"
+APP_PORT=8082
+DB_DRIVER="mysql"
+DB_HOST="localhost"
+DB_PORT="3306"
+DB_USERNAME="root"
+
+DB_DATABASE_NAME="coaching_app"    
+
+
+DB_PASSWORD="Shriram@2001"
+
+
+COACHING_APP_DB_MAX_IDLE_CONN=5
+COACHING_APP_DB_MAX_OPEN_CONN=10
+COACHING_APP_DB_MAX_IDLE_TIME=300    # 5 minutes
+COACHING_APP_DB_MAX_LIFE_TIME=600    # 10 minutes```
+
+### 3. Create the database
+
+```sql
+CREATE DATABASE coaching_db;
 ```
 
-## Integrate with your tools
+### 4. Run DDL — create tables
 
-- [ ] [Set up project integrations](http://gitlab.choicetechlab.com/choice-techlab-expo-backend/export-crm-backend/-/settings/integrations)
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-## Collaborate with your team
+CREATE TABLE `coaches` (
+  `id`         INT NOT NULL AUTO_INCREMENT,
+  `uuid`       VARCHAR(255) DEFAULT (UUID()),
+  `full_name`  VARCHAR(255) NOT NULL,
+  `email`      VARCHAR(255) NOT NULL UNIQUE,
+  `status`     ENUM('active', 'inactive') DEFAULT 'active',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+CREATE TABLE `income_transactions` (
+  `id`               INT NOT NULL AUTO_INCREMENT,
+  `uuid`             VARCHAR(255) DEFAULT (UUID()),
+  `coach_id`         INT NOT NULL,
+  `amount`           DECIMAL(15,2) NOT NULL DEFAULT 0,
+  `status`           ENUM('pending','completed','failed','refunded') DEFAULT 'completed',
+  `transaction_date` DATE NOT NULL,
+  `created_at`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at`       TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_income_coach_date` (`coach_id`, `transaction_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
 
-## Test and Deploy
+### 5. Seed sample data
 
-Use the built-in continuous integration in GitLab.
+```sql
+INSERT INTO `coaches` (`uuid`, `full_name`, `email`, `status`) VALUES
+(UUID(), 'Rahul Sharma', 'rahul.sharma@gmail.com', 'active'),
+(UUID(), 'Priya Mehta',  'priya.mehta@gmail.com',  'active'),
+(UUID(), 'Amit Verma',   'amit.verma@gmail.com',   'active'),
+(UUID(), 'Sneha Patil',  'sneha.patil@gmail.com',  'inactive'),
+(UUID(), 'Vikas Joshi',  'vikas.joshi@gmail.com',  'active');
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+INSERT INTO `income_transactions` (`uuid`, `coach_id`, `amount`, `status`, `transaction_date`) VALUES
+(UUID(), 1, 80000,  'completed', CURDATE() - INTERVAL 6 DAY),
+(UUID(), 1, 120000, 'completed', CURDATE() - INTERVAL 5 DAY),
+(UUID(), 1, 95000,  'completed', CURDATE() - INTERVAL 4 DAY),
+(UUID(), 1, 150000, 'completed', CURDATE() - INTERVAL 2 DAY),
+(UUID(), 1, 200000, 'completed', CURDATE() - INTERVAL 1 DAY),
+(UUID(), 1, 175000, 'completed', CURDATE() - INTERVAL 0 DAY),
+(UUID(), 1, 60000,  'completed', CURDATE() - INTERVAL 13 DAY),
+(UUID(), 1, 90000,  'completed', CURDATE() - INTERVAL 12 DAY),
+(UUID(), 1, 75000,  'completed', CURDATE() - INTERVAL 11 DAY),
+(UUID(), 1, 110000, 'completed', CURDATE() - INTERVAL 10 DAY),
+(UUID(), 1, 85000,  'completed', CURDATE() - INTERVAL 9 DAY),
+(UUID(), 1, 130000, 'completed', CURDATE() - INTERVAL 8 DAY),
+(UUID(), 1, 100000, 'completed', CURDATE() - INTERVAL 7 DAY);
+```
 
-***
+### 6. Run the application
 
-# Editing this README
+```bash
+go run main.go
+# or
+make run
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Server starts at `http://localhost:8080`
 
-## Suggestions for a good README
+---
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+## API Reference
 
-## Name
-Choose a self-explaining name for your project.
+### GET /api/v1/income/daily
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Returns daily income chart data comparing the last 7 days vs previous 7 days for a specific coach.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+**Query Parameters**
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `coach_id` | integer | Yes | ID of the coach |
+| `period` | string | No | Period to compare. Default: `7d` |
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+**Example Request**
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+GET /api/v1/income/daily?period=7d&coach_id=1
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+**Success Response — 200**
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```json
+{
+  "status": true,
+  "message": "Daily income fetched successfully",
+  "data": {
+    "summary": {
+      "total_income_current": 820000,
+      "total_income_previous": 650000,
+      "delta_amount": 170000,
+      "delta_percent": 26.15,
+      "trend": "increased"
+    },
+    "chart": {
+      "current": [
+        { "date": "2024-04-01", "amount": 80000 },
+        { "date": "2024-04-02", "amount": 120000 },
+        { "date": "2024-04-03", "amount": 95000 },
+        { "date": "2024-04-05", "amount": 150000 },
+        { "date": "2024-04-06", "amount": 200000 },
+        { "date": "2024-04-07", "amount": 175000 }
+      ],
+      "previous": [
+        { "date": "2024-03-25", "amount": 60000 },
+        { "date": "2024-03-26", "amount": 90000 },
+        { "date": "2024-03-27", "amount": 75000 },
+        { "date": "2024-03-28", "amount": 110000 },
+        { "date": "2024-03-29", "amount": 85000 },
+        { "date": "2024-03-30", "amount": 130000 },
+        { "date": "2024-03-31", "amount": 100000 }
+      ]
+    },
+    "meta": {
+      "current_range": {
+        "from": "2024-04-01",
+        "to": "2024-04-07"
+      },
+      "previous_range": {
+        "from": "2024-03-25",
+        "to": "2024-03-31"
+      }
+    }
+  }
+}
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+**Error Responses**
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+| Status | Scenario | Message |
+|---|---|---|
+| 400 | Missing `coach_id` | `coach_id is required` |
+| 400 | Invalid `coach_id` | `coach_id must be a valid number` |
+| 404 | Coach not found | `Coach not found` |
+| 500 | Server error | `Unexpected error occurred` |
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+---
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Test Scenarios
 
-## License
-For open source projects, say how it is licensed.
+| Coach ID | Scenario | Expected Result |
+|---|---|---|
+| `1` | Data in both periods | Full chart with delta and trend |
+| `2` | Current period only | `delta_percent: null`, trend `increased` |
+| `3` | Mixed statuses | Only `completed` rows counted |
+| `4` | Soft deleted coach | `404 Not Found` |
+| `5` | No transactions | All zeros, trend `unchanged` |
+| `999` | Does not exist | `404 Not Found` |
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+---
+
+## Postman Collection
+
+---
+curl --location 'http://localhost:8082/api/v1/income/daily?period=7d&coach_id=3' \
+--header 'Content-Type: application/json'
+
+## Author
+
+**Atharv Yeole**
+GitHub: [@atharvyeole43](https://github.com/atharvyeole43)
+
