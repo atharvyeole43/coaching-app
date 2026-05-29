@@ -16,39 +16,60 @@ A backend REST API built with **Go (Gin)** for the Daily Income Chart feature in
 
 ## Project Structure
 
-income-chart-api/
-│
+coaching-app/
+├── app/
+│   └── app.go
 ├── cmd/
-│   └── main.go
-│
+│   └── app/
+│       └── run.go
 ├── config/
-│   └── database.go
-│
-├── controllers/
-│   └── income_controller.go
-│
-├── services/
-│   └── income_service.go
-│
-├── repositories/
-│   └── income_repository.go
-│
-├── models/
-│   └── income.go
-│
-├── routes/
-│   └── routes.go
-│
+│   ├── config.go
+│   └── db.go
+├── constant/
 ├── dto/
-│   ├── request.go
+│   └── income_dto.go
+├── internal/
+│   ├── apperrors/
+│   │   └── apperrors.go
+│   ├── controller/
+│   │   └── inc/
+│   │       ├── income_controller.go
+│   │       └── init_income_controller.go
+│   ├── middleware/
+│   │   ├── auth_middleware.go
+│   │   ├── rate_limiter.go
+│   │   └── timeout_middleware.go
+│   ├── repository/
+│   │   └── inc/
+│   │       ├── income_repository.go
+│   │       └── init_income_repository.go
+│   ├── routes/
+│   │   └── routes.go
+│   └── service/
+│       └── inc/
+│           ├── income_service.go
+│           └── init_income_service.go
+├── models/
+│   ├── coach.go
+│   └── income_transactions.go
+├── pkg/
+│   └── logger/
+│       └── logger.go
+├── response/
 │   └── response.go
-│
+├── storage/
+│   └── db/
+│       └── client.go
 ├── utils/
-│   └── response.go
-│
-├── .env
+│   ├── env_utils.go
+│   ├── errors.go
+│   ├── mysql_error_map.go
+│   ├── response_utils.go
+│   └── validator_utils.go
+├── .env.example
 ├── go.mod
-└── README.md---
+├── go.sum
+└── main.go
 
 ## Getting Started
 
