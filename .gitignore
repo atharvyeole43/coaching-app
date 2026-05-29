@@ -2,7 +2,7 @@
 *.o
 *.a
 *.so
-*.env
+
 *.sh
 
 # Output files
@@ -22,7 +22,6 @@
 /logs/*
 /storage/*
 /signature
-.env
 ssl/uat/jwtRSA256-public-uat.pem
 Config/samplePermission.json
 storage/import/
