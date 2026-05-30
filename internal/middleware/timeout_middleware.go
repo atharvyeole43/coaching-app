@@ -1,60 +1,21 @@
 package middleware
 
 import (
-	"coaching-app-backend/utils"
-	"context"
-
 	"log"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	timeoutmiddleware "github.com/gofiber/fiber/v2/middleware/timeout"
 )
 
-func Timeout(timeout time.Duration) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout*time.Second)
-		defer cancel()
-		c.Request = c.Request.WithContext(ctx)
-		// Use a goroutine to execute the main handler
-		done := make(chan bool)
-		go func() {
-			c.Next()
-			done <- true
-		}()
-		select {
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				utils.GatewayTimeoutAbortWithJSON(c, "Request Timeout")
-			}
-		case <-done:
-			// Request completed before timeout
-		}
-	}
-}
+func Timeout(timeout time.Duration) fiber.Handler {
 
-// Middleware function to check if the request is coming from Postman
-func PostmanCheck() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userAgent := c.GetHeader("User-Agent")
-		choiceKey := c.GetHeader("x-choice-key")
-		if strings.Contains(strings.ToLower(userAgent), "postman") && choiceKey == "" {
-			utils.UnauthorizedAbortWithJSON(c, "Unauthorized access from Postman")
-			return
-		}
-		c.Next()
-	}
-}
+	return timeoutmiddleware.New(func(c *fiber.Ctx) error {
 
-func GetBoolEnv(key string, defaultVal bool) bool {
-	val := strings.ToLower(os.Getenv(key))
-	if val == "true" {
-		return true
-	} else if val == "false" {
-		return false
-	}
-	return defaultVal
+		return c.Next()
+
+	}, timeout)
 }
 
 func getLogFile() *os.File {

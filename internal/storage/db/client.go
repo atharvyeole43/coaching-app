@@ -4,10 +4,8 @@ import (
 	"coaching-app-backend/config"
 	"fmt"
 
-	_ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -20,42 +18,42 @@ type DataBaseConfig struct {
 }
 
 func InitAllDbConnections() {
-
 	DBConnectionPool()
-
 }
 
 func GetDatabaseConfig() DataBaseConfig {
 
 	if COACHINGDB == nil {
-		logrus.Error("COACHING  DB connections is not initialized.")
+		logrus.Error("COACHING DB connection is not initialized.")
 	}
 
 	return DataBaseConfig{
 		COACHINGDB: COACHINGDB,
 	}
 }
+
 func DBConnectionPool() {
 
 	COACHINGDbConfig, err := config.COACHINGDBConfig()
 	if err != nil {
-		logrus.Fatal("Failed to load Insurance DB configuration: ", err)
+		logrus.Fatal("Failed to load DB configuration: ", err)
 		return
 	}
 
-	dbTcp := fmt.Sprintf("@tcp(%s:%s)/", COACHINGDbConfig.Host, COACHINGDbConfig.Port)
+	// PostgreSQL DSN
 	dsn := fmt.Sprintf(
-		"%s:%s%s%s?charset=utf8mb4&parseTime=True&loc=Asia%%2FKolkata",
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Kolkata",
+		COACHINGDbConfig.Host,
 		COACHINGDbConfig.User,
 		COACHINGDbConfig.Password,
-		dbTcp,
 		COACHINGDbConfig.Name,
+		COACHINGDbConfig.Port,
 	)
 
-	// Open a DB connection
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	// Open PostgreSQL connection
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		logrus.Fatal("COACHINGDbConnectionPool Error: ", err)
+		logrus.Fatal("PostgreSQL Connection Error: ", err)
 		return
 	}
 
@@ -65,18 +63,21 @@ func DBConnectionPool() {
 		return
 	}
 
+	// Connection Pool Settings
 	sqlDB.SetMaxIdleConns(COACHINGDbConfig.MaxIdleConn)
 	sqlDB.SetMaxOpenConns(COACHINGDbConfig.MaxOpenConn)
 	sqlDB.SetConnMaxIdleTime(COACHINGDbConfig.MaxIdleTime)
 	sqlDB.SetConnMaxLifetime(COACHINGDbConfig.MaxLifeTime)
 
-	// Log the connection pool stats
+	// Stats
 	stats := sqlDB.Stats()
-	logrus.Infof("@COACHINGBPool MYSQL Max Open Connections: %d", stats.MaxOpenConnections)
-	logrus.Infof("@COACHINGDBPool MYSQL Open Connections: %d", stats.OpenConnections)
-	logrus.Infof("@COACHINGDBPool MYSQL InUse Connections: %d", stats.InUse)
-	logrus.Infof("@COACHINGDBPool MYSQL Idle Connections: %d", stats.Idle)
+
+	logrus.Infof("@COACHINGDBPool POSTGRES Max Open Connections: %d", stats.MaxOpenConnections)
+	logrus.Infof("@COACHINGDBPool POSTGRES Open Connections: %d", stats.OpenConnections)
+	logrus.Infof("@COACHINGDBPool POSTGRES InUse Connections: %d", stats.InUse)
+	logrus.Infof("@COACHINGDBPool POSTGRES Idle Connections: %d", stats.Idle)
 
 	COACHINGDB = db
-	logrus.Info("DB Connection Initiated: ")
+
+	logrus.Info("PostgreSQL DB Connection Initiated")
 }

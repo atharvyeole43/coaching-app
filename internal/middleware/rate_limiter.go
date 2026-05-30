@@ -3,31 +3,27 @@ package middleware
 import (
 	"time"
 
-	"github.com/Reugito/dynamicratelimiter/config"
-	"github.com/Reugito/dynamicratelimiter/middleware"
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
 
-func SetupRateLimiter(router *gin.Engine) {
+func SetupRateLimiter(app *fiber.App) {
 
-	rateLimitConf := config.RateLimitConfig{
-		Redis: config.RedisConfig{
-			EnableRedis: false,
+	app.Use(limiter.New(limiter.Config{
+
+		// Max requests
+		Max: 30,
+
+		// Expiration window
+		Expiration: 1 * time.Second,
+
+		// Response when limit exceeded
+		LimitReached: func(c *fiber.Ctx) error {
+
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"success": false,
+				"message": "Too many requests",
+			})
 		},
-		RateLimits: config.RateLimitSettings{
-			GlobalMaxRequestsPerSec: 30,
-			DefaultRequestsPerSec:   10,
-			MonitoringTimeFrame:     1 * time.Minute,
-			IncreaseFactor:          2,
-			IPExceedThreshold:       2,
-		},
-		EnableAdaptiveRateLimit: true,
-	}
-
-	rl := middleware.NewRateLimiter(rateLimitConf)
-	router.Use(rl.Middleware())
-
-	router.GET("/rate-limit-conf", rl.RateLimitMetricsHandler())
-	router.GET("/reset-limit-conf", rl.DefaultRequestsPerSec())
-
+	}))
 }

@@ -5,30 +5,29 @@ import (
 	"coaching-app-backend/internal/middleware"
 	"time"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	fibercors "github.com/gofiber/fiber/v2/middleware/cors"
 )
 
-func RegisterRoutes(r *gin.Engine, c *app.Controllers) {
+func RegisterRoutes(r *fiber.App, c *app.Controllers) {
 
-	// Apply CORS middleware globally
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"*"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
+	// CORS Middleware
+	r.Use(fibercors.New(fibercors.Config{
+		AllowOrigins:     "*",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "*",
+		AllowCredentials: false,
+		MaxAge:           int((12 * time.Hour).Seconds()),
 	}))
 
+	// Rate Limiter Middleware
 	middleware.SetupRateLimiter(r)
 
+	// API Version Group
 	api := r.Group("/api/v1")
-	{
-		income := api.Group("/income")
-		{
-			income.GET("/daily", middleware.Timeout(30), c.IncomeControllers.IncomeController.GetDailyIncome)
-		}
-	}
 
-}	
+	// Income Routes
+	income := api.Group("/income")
+
+	income.Get("/daily", middleware.Timeout(30*time.Second), c.IncomeControllers.IncomeController.GetDailyIncome)
+}

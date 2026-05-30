@@ -2,7 +2,6 @@ package incomerepositories
 
 import (
 	"coaching-app-backend/dto"
-	database "coaching-app-backend/internal/storage/db"
 	"coaching-app-backend/models"
 	"fmt"
 	"strconv"
@@ -39,7 +38,7 @@ func (r *incomeRepository) GetDailyIncome(req dto.GetDailyIncomeRequest) (*dto.D
 	}
 
 	var coachCount int64
-	err = database.COACHINGDB.
+	err = r.db.
 		Model(&models.Coach{}).
 		Where("id = ? AND deleted_at IS NULL", coachID).
 		Count(&coachCount).Error
@@ -67,7 +66,7 @@ func (r *incomeRepository) GetDailyIncome(req dto.GetDailyIncomeRequest) (*dto.D
 	previousFrom := previousTo.AddDate(0, 0, -(days - 1))
 
 	var currentRows []dto.IncomePoint
-	err = database.COACHINGDB.
+	err = r.db.
 		Model(&models.IncomeTransactions{}).
 		Select("DATE(transaction_date) as date, SUM(amount) as amount").
 		Where("coach_id = ?", coachID).
@@ -85,7 +84,7 @@ func (r *incomeRepository) GetDailyIncome(req dto.GetDailyIncomeRequest) (*dto.D
 	}
 
 	var previousRows []dto.IncomePoint
-	err = database.COACHINGDB.
+	err = r.db.
 		Model(&models.IncomeTransactions{}).
 		Select("DATE(transaction_date) as date, SUM(amount) as amount").
 		Where("coach_id = ?", coachID).

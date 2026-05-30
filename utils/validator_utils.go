@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	english "github.com/go-playground/validator/v10/translations/en"
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -66,7 +66,7 @@ func InitializeValidator() (*validator.Validate, ut.Translator) {
 }
 
 // ValidateRequest performs validation on a request using the provided validator and translator.
-func ValidateRequest(c *gin.Context, requestBody interface{}) interface{} {
+func ValidateRequest(c *fiber.Ctx, requestBody interface{}) interface{} {
 	tokenValidator, trans := InitializeValidator() // Initialize the validator and translator
 
 	tokenValidatorErr := tokenValidator.Struct(requestBody)

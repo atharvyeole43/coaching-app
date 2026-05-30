@@ -5,12 +5,12 @@ import (
 	"coaching-app-backend/internal/service/incomeservices"
 	"coaching-app-backend/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
 type IncomeController interface {
-	GetDailyIncome(c *gin.Context)
+	GetDailyIncome(c *fiber.Ctx) error
 }
 
 type incomeController struct {
@@ -18,48 +18,47 @@ type incomeController struct {
 }
 
 func NewIncomeController(incomeService incomeservices.IncomeService) IncomeController {
-
 	return &incomeController{
 		incomeService: incomeService,
 	}
 }
-func (ic *incomeController) GetDailyIncome(c *gin.Context) {
+
+func (ic *incomeController) GetDailyIncome(c *fiber.Ctx) error {
 
 	defer func() {
 		if panicInfo := recover(); panicInfo != nil {
-			logrus.Error("GetDailyIncome@panicInfo:", panicInfo)
-			utils.InternalServerErrorWithMessage(c, "Unexpected error occurred")
-			return
+			logrus.WithField("panic_info", panicInfo).Error("GetDailyIncome panic recovered")
+			_ = utils.InternalServerErrorWithMessage(c, "Unexpected error occurred")
 		}
 	}()
 
-	var request dto.GetDailyIncomeRequest
-	request.CoachID = c.Query("coach_id")
-	request.Period = c.DefaultQuery("period", "7d")
+	request := dto.GetDailyIncomeRequest{
+		CoachID: c.Query("coach_id"),
+		Period:  c.Query("period", "7d"),
+	}
 
-	validationResp := utils.ValidateRequest(c, request)
-	if validationResp != nil {
-		utils.ValidationResponse(c, validationResp.(string))
-		return
+	if validationResp := utils.ValidateRequest(c, request); validationResp != nil {
+
+		return utils.ValidationResponse(c, validationResp.(string))
 	}
 
 	response, err := ic.incomeService.GetDailyIncome(request)
 	if err != nil {
-		logrus.Error("GetDailyIncome@Error:", err)
 
-		if err.Error() == "coach not found" {
-			utils.NotFoundResponse(c, "Coach not found")
-			return
+		logrus.WithError(err).Error("GetDailyIncome failed")
+
+		switch err.Error() {
+
+		case "coach not found":
+			return utils.NotFoundResponse(c, "Coach not found")
+
+		case "invalid coach_id":
+			return utils.ValidationResponse(c, "coach_id must be a valid number")
+
+		default:
+			return utils.InternalServerErrorWithMessage(c, "Failed to fetch daily income")
 		}
-
-		if err.Error() == "invalid coach_id" {
-			utils.ValidationResponse(c, "coach_id must be a valid number")
-			return
-		}
-
-		utils.InternalServerErrorWithMessage(c, err.Error())
-		return
 	}
 
-	utils.SuccessResponse(c, "Daily income fetched successfully", response)
+	return utils.SuccessResponse(c, "Daily income fetched successfully", response)
 }
